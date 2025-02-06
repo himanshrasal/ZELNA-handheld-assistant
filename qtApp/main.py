@@ -2,7 +2,7 @@ import sys
 from PyQt5.QtWidgets import QWidget, QApplication, QVBoxLayout
 from widgets.ChatBox import ChatBox
 from widgets.MessageBox import MessageBox
-from resources.Theme import Colors
+from resources.Theme import UI
     
 class mainWindow(QWidget):
     def __init__(self):
@@ -11,12 +11,12 @@ class mainWindow(QWidget):
         
         
     def initUI(self):
-        self.lightMode = True
-        colors = Colors(self.lightMode)
+        self.lightMode = False
+        ui = UI(self.lightMode)
         
         self.setWindowTitle("ZELNA")
         self.setGeometry(0,0,640,480)
-        self.setStyleSheet(f"""background-color:{colors.windowBackground}; border: none;""")
+        self.setStyleSheet(f"""background-color:{ui.windowBackground}; border: none;""")
         
         layout = QVBoxLayout()
         
@@ -33,18 +33,22 @@ class mainWindow(QWidget):
         
         self.setLayout(layout)
         
-        self.chatBox.addMessages("jfajafa",False)
-        self.chatBox.addMessages("jfajafajfajafajfajafajfajafa",True)
-        self.chatBox.addMessages("jfajafajfajafajfajafa",False)
-        self.chatBox.addMessages("jfajafa",False)
-        self.chatBox.addMessages("jfajfafasdf af af afdasfdsafafa",True)
-        self.chatBox.addMessages("jfajafa",False)
-        self.chatBox.addMessages("jfajafajfajafajfajafajfajafa",True)
-        self.chatBox.addMessages("jfajafajfajafajfajafa",False)
-        self.chatBox.addMessages("jfajafa",False)
-        self.chatBox.addMessages("jfajfafasdf af af afdasfdsafafa",True)
+        # Adding chat messages for testing:
+        self.chatBox.addMessages("Hello! How can I assist you today?", True)  # AI message
+        self.chatBox.addMessages("Hi! I'm having some trouble with my code.", False)  # User message
+        self.chatBox.addMessages("I'd be happy to help! What seems to be the issue?", True)  # AI message
+        self.chatBox.addMessages("I'm trying to implement polymorphism in Python, but I'm stuck.", False)  # User message
+        self.chatBox.addMessages("Polymorphism is a great feature! Could you share your code?", True)  # AI message
+        self.chatBox.addMessages("Sure, here's the code snippet...", False)  # User message
+        self.chatBox.addMessages("Great, let me take a look at it. I'll guide you through it.", True)  # AI message
+        self.chatBox.addMessages("Thanks! I'm looking forward to it.", False)  # User message
+        self.chatBox.addMessages("No problem! Let's get it working together.", True)  # AI message
+        self.chatBox.addMessages("You're awesome! Let's start.", False)  # User message
+        self.chatBox.addMessages("You're welcome! Let's start by reviewing the main issues.", True)  # AI message
+        self.chatBox.addMessages("bye!", True)  # AI message
+
         
-        self.messageBox.updateText(" jakjfl akjfl;ka ljal kjal; j;lak jl;k;ka ljal kjal; j;lak jl;k;ka ljal kjal; j;lak jl;k;ka ljal kjal; j;lak jl;k;ka ljal kjal; j;lak jl;k;ka ljal kjal; j;lak jl;k;ka ljal kjal; j;lak jl;ka jakjfl akjfl;ka ljal kjal; j;lak jl;k;ka ljal kjal; j;lak jl;k;ka ljal kjal; j;lak jl;k;ka ljal kjal; j;lak jl;k;ka ljal kjal; j;lak jl;k;ka ljal kjal; j;lak jl;k;ka ljal kjal; j;lak jl;ka jakjfl akjfl;ka ljal kjal; j;lak jl;k;ka ljal kjal; j;lak jl;k;ka ljal kjal; j;lak jl;k;ka ljal kjal; j;lak jl;k;ka ljal kjal; j;lak jl;k;ka ljal kjal; j;lak jl;k;ka ljal kjal; j;lak jl;ka jakj")
+        self.messageBox.updateText("Thank you!")
         
         
 
@@ -52,4 +56,6 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = mainWindow()
     window.show()
+    
+    
     sys.exit(app.exec_())
