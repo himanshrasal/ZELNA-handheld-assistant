@@ -1,16 +1,20 @@
 from PyQt5.QtWidgets import QScrollArea, QVBoxLayout, QLabel, QWidget, QSizePolicy
 from PyQt5.QtCore import Qt, QTimer
+from resources.Theme import Colors, UI
 
 class MessageBox(QScrollArea):
-    def __init__(self):
+    def __init__(self, lightmode=False):
+        self.lightmode = lightmode
         super().__init__()
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff) 
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff) 
         
-        self.setStyleSheet("""
-                           background-color: #B3DEC1;
-                           border: 2px solid white;
-                           border-radius: 14px;
+        self.colors = Colors(self.lightmode)
+        self.ui = UI(lightmode=self.lightmode)
+        
+        self.setStyleSheet(f"""
+                           background-color: {self.colors.messageBoxBackground};
+                           {self.ui.chatBorders}
                         """)
             
         self.container = QWidget()
@@ -26,7 +30,7 @@ class MessageBox(QScrollArea):
                                     font-family: "Arial";
                                     font-size: 26px;
                                     background: none;
-                                    padding: 2px;
+                                    padding: 0px;
                                     margin: 0px;
                                     """)
         

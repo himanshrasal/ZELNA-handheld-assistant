@@ -1,12 +1,8 @@
 import sys
-from PyQt5.QtWidgets import (
-    QWidget, 
-    QApplication, 
-    QVBoxLayout
-    )
+from PyQt5.QtWidgets import QWidget, QApplication, QVBoxLayout
 from widgets.ChatBox import ChatBox
 from widgets.MessageBox import MessageBox
-
+from resources.Theme import Colors
     
 class mainWindow(QWidget):
     def __init__(self):
@@ -15,17 +11,19 @@ class mainWindow(QWidget):
         
         
     def initUI(self):
+        self.lightMode = True
+        colors = Colors(self.lightMode)
         
         self.setWindowTitle("ZELNA")
         self.setGeometry(0,0,640,480)
-        self.setStyleSheet("""background-color:rgb(26, 23, 46); border: none;""")
+        self.setStyleSheet(f"""background-color:{colors.windowBackground}; border: none;""")
         
         layout = QVBoxLayout()
         
-        self.chatBox = ChatBox()
+        self.chatBox = ChatBox(lightmode=self.lightMode)
     
-        self.messageBox = MessageBox()
-        self.messageBox.setFixedHeight(100)
+        self.messageBox = MessageBox(lightmode=self.lightMode)
+        self.messageBox.setFixedHeight(80)
         
         layout.addWidget(self.chatBox)
         layout.addWidget(self.messageBox)
@@ -46,7 +44,7 @@ class mainWindow(QWidget):
         self.chatBox.addMessages("jfajafa",False)
         self.chatBox.addMessages("jfajfafasdf af af afdasfdsafafa",True)
         
-        self.messageBox.updateText(" jakjfl akjfl;ka ljal kjal; j;lak jl;k;ka ljal kjal; j;lak jl;k;ka ljal kjal; j;lak jl;k;ka ljal kjal; j;lak jl;k;ka ljal kjal; j;lak jl;k;ka ljal kjal; j;lak jl;k;ka ljal kjal; j;lak jl;ka jakjfl akjfl;ka ljal kjal; j;lak jl;k;ka ljal kjal; j;lak jl;k;ka ljal kjal; j;lak jl;k;ka ljal kjal; j;lak jl;k;ka ljal kjal; j;lak jl;k;ka ljal kjal; j;lak jl;k;ka ljal kjal; j;lak jl;ka jakjfl akjfl;ka ljal kjal; j;lak jl;k;ka ljal kjal; j;lak jl;k;ka ljal kjal; j;lak jl;k;ka ljal kjal; j;lak jl;k;ka ljal kjal; j;lak jl;k;ka ljal kjal; j;lak jl;k;ka ljal kjal; j;lak jl;ka jakjfl akjfl;ka ljal kjal; j;lak jl;k;ka ljal kjal; j;lak jl;k;ka ljal kjal; j;lak jl;k;ka ljal kjal; j;lak jl;k;ka ljal kjal; j;lak jl;k;ka ljal kjal; j;lak jl;k;ka ljal kjal; j;lak jl;ka j")
+        self.messageBox.updateText(" jakjfl akjfl;ka ljal kjal; j;lak jl;k;ka ljal kjal; j;lak jl;k;ka ljal kjal; j;lak jl;k;ka ljal kjal; j;lak jl;k;ka ljal kjal; j;lak jl;k;ka ljal kjal; j;lak jl;k;ka ljal kjal; j;lak jl;ka jakjfl akjfl;ka ljal kjal; j;lak jl;k;ka ljal kjal; j;lak jl;k;ka ljal kjal; j;lak jl;k;ka ljal kjal; j;lak jl;k;ka ljal kjal; j;lak jl;k;ka ljal kjal; j;lak jl;k;ka ljal kjal; j;lak jl;ka jakjfl akjfl;ka ljal kjal; j;lak jl;k;ka ljal kjal; j;lak jl;k;ka ljal kjal; j;lak jl;k;ka ljal kjal; j;lak jl;k;ka ljal kjal; j;lak jl;k;ka ljal kjal; j;lak jl;k;ka ljal kjal; j;lak jl;ka jakj")
         
         
 

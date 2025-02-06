@@ -1,11 +1,15 @@
 from PyQt5.QtWidgets import QWidget, QLabel, QHBoxLayout, QVBoxLayout, QSpacerItem, QSizePolicy, QScrollArea, QGraphicsDropShadowEffect
 from PyQt5.QtCore import QTimer , Qt
 from PyQt5.QtGui import QColor
+from resources.Theme import Colors, UI
 
 class ChatBox(QScrollArea):
     
-    def __init__(self):
+    def __init__(self, lightmode=False):
         super().__init__()
+        self.lightmode = lightmode
+        self.ui = UI(lightmode=self.lightmode)
+
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff) 
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)    
         
@@ -18,10 +22,7 @@ class ChatBox(QScrollArea):
         self.setWidget(self.container)
         self.setWidgetResizable(True)
         
-        self.setStyleSheet("""
-                           border: 2px solid white;
-                           border-radius: 14px;
-                        """)
+        self.setStyleSheet(f"{self.ui.chatBorders}") #scroll window styles
 
         self.layout.addSpacerItem(QSpacerItem(1, 1, QSizePolicy.Preferred, QSizePolicy.Expanding))
         
@@ -29,7 +30,7 @@ class ChatBox(QScrollArea):
 
     #temp
     def addMessages(self, text = "", left=False):
-        newMessage = TextBubbleWidget(text, left)
+        newMessage = TextBubbleWidget(text, left, self.lightmode)
         self.layout.insertWidget(self.layout.count() - 1, newMessage)
         
         QTimer.singleShot(0, self.scrollToBottom)
@@ -39,7 +40,7 @@ class ChatBox(QScrollArea):
         self.verticalScrollBar().setValue(self.verticalScrollBar().maximum())
         
 class TextBubble(QLabel):
-    def __init__(self, text, color="gray"):
+    def __init__(self, text, color):
         super().__init__(text)
         
         self.setMaximumWidth(500)
@@ -61,10 +62,11 @@ class TextBubble(QLabel):
 
         
 class TextBubbleWidget(QWidget):   
-    def __init__(self, text, left=False):
+    def __init__(self, text, left=False, lightmode=False):
         super().__init__()
 
-        color = "#FFD6C0" if left else "#B3DEC1"
+        color = Colors(lightmode)
+        color = color.reciveBubble if left else color.sendBubble
         
         hbox = QHBoxLayout()
         hbox.setContentsMargins(0,0,0,0)
