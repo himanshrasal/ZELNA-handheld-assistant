@@ -18,6 +18,7 @@ class UI:
             #chat bubble
             self.sendBubble = "#B3DEC1"
             self.reciveBubble = "#FFD6C0"
+            self.informationBubble = "#bbbbbb"
             #chat bubble blur
             self.bubbleBlurColor = (0, 0, 0)
             
@@ -32,6 +33,7 @@ class UI:
             #chat bubble
             self.sendBubble = "#6EACDA"
             self.reciveBubble = "#E2E2B6"
+            self.informationBubble = "#bbbbbb"
             #chat bubble blur
             self.bubbleBlurColor = (255, 255, 255)
             

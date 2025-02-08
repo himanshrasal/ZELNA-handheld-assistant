@@ -16,7 +16,7 @@ class ChatBox(QScrollArea):
         self.container = QWidget()
         self.container.setStyleSheet("border:none; background:none;")
 
-        self.layout = QVBoxLayout(self.container)
+        self.layout: QVBoxLayout = QVBoxLayout(self.container)
         self.layout.setContentsMargins(0, 0, 0, 0)
         self.layout.setSpacing(0)
         self.setWidget(self.container)
@@ -29,11 +29,27 @@ class ChatBox(QScrollArea):
 
 
     #temp
-    def addMessages(self, text = "", left=False):
-        newMessage = TextBubbleWidget(text, left, lightmode=self.lightmode)
+    def addMessage(self, text = "", sender = "info"):
+        if (text == "") or (not sender in ["info", "client", "server"]): return
+        
+        newMessage = TextBubbleWidget(text, sender, lightmode=self.lightmode)
         self.layout.insertWidget(self.layout.count() - 1, newMessage)
         
         QTimer.singleShot(0, self.scrollToBottom)
+        
+        
+    def initMessages(self, dataset):
+        for i in dataset:
+            newMessage = TextBubbleWidget(i.get('message'), i.get('sender'), lightmode=self.lightmode)
+            self.layout.insertWidget(self.layout.count() - 1, newMessage)
+        
+        QTimer.singleShot(0, self.scrollToBottom)
+    
+    def clearMesages(self):
+        while self.layout.count():
+            widget = self.layout.takeAt(0).widget()
+            if widget:
+                widget.deleteLater()
 
 
     def scrollToBottom(self):
@@ -68,22 +84,36 @@ class TextBubble(QLabel):
 
         
 class TextBubbleWidget(QWidget):   
-    def __init__(self, text, left=False, lightmode=False):
+    def __init__(self, text, sender="client", lightmode=False):
         super().__init__()
         self.lightmode = lightmode
         self.ui = UI(self.lightmode)
         
         hbox = QHBoxLayout()
         hbox.setContentsMargins(0,0,0,0)
-        bubble = TextBubble(text, self.ui.reciveBubble if left else self.ui.sendBubble, self.lightmode) #sets color depending on sender and reciver
         
-        if not left:
-            hbox.addSpacerItem(QSpacerItem(1,1,QSizePolicy.Expanding, QSizePolicy.Preferred))
-
-        hbox.addWidget(bubble)
-        
-        if left:
-            hbox.addSpacerItem(QSpacerItem(1,1,QSizePolicy.Expanding, QSizePolicy.Preferred))
-
+        match sender:
+            case "client":
+                bubbleColor= self.ui.sendBubble
+                bubble = TextBubble(text, bubbleColor, self.lightmode)
+                
+                hbox.addSpacerItem(QSpacerItem(1,1,QSizePolicy.Expanding, QSizePolicy.Preferred))
+                hbox.addWidget(bubble)
+                
+            case "server":
+                bubbleColor= self.ui.reciveBubble
+                bubble = TextBubble(text, bubbleColor, self.lightmode)
+                
+                hbox.addWidget(bubble)
+                hbox.addSpacerItem(QSpacerItem(1,1,QSizePolicy.Expanding, QSizePolicy.Preferred))
+                
+            case "info":
+                bubbleColor= self.ui.informationBubble
+                bubble = TextBubble(text, bubbleColor, self.lightmode)
+            
+                hbox.addSpacerItem(QSpacerItem(1,1,QSizePolicy.Expanding, QSizePolicy.Preferred))
+                hbox.addWidget(bubble)
+                hbox.addSpacerItem(QSpacerItem(1,1,QSizePolicy.Expanding, QSizePolicy.Preferred))
+                
         self.setLayout(hbox)
     
