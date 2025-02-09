@@ -31,9 +31,9 @@ def handleConnection(auth):
     print("testdata sent")
 
 
-@socketio.on("initializeAck")
-def handleHelo(data):
-    print(data)
+@socketio.on("disconnect")
+def handleDisconnection():
+    print("client disconnected")
 
 
 def create_app():

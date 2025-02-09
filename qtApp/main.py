@@ -10,15 +10,15 @@ sio = socketio.Client()
 
 
 class SocketThread(QThread):
-    serverEvent = pyqtSignal(str, object)
+    eventSignal = pyqtSignal(str, object)
 
     def run(self):
         try:
 
             @sio.on("initialize")
             def handleInitialization(data):
-                print(f"Received data from server")
-                self.serverEvent.emit(
+                print("Received data from server")
+                self.eventSignal.emit(
                     "initialize", data
                 )  # Emit signal to main thread when data is received
 
@@ -65,7 +65,7 @@ class mainWindow(QWidget):
         self.socketThread = SocketThread()
 
         # Connect the signal to a slot method in mainWindow
-        self.socketThread.serverEvent.connect(self.handleInitialization)
+        self.socketThread.eventSignal.connect(self.handleInitialization)
 
         self.socketThread.start()
 
@@ -76,6 +76,8 @@ class mainWindow(QWidget):
                 print("messages cleared")
                 self.chatBox.initMessages(data)
                 print("initialized")
+            case "message":
+                self.chatBox.addMessage(data.get("message"), data.get("sender"))
 
 
 if __name__ == "__main__":
