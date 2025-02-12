@@ -54,7 +54,8 @@ class ChatBox(QScrollArea):
             newMessage = TextBubbleWidget(
                 i.get("message"), i.get("sender"), lightmode=self.lightmode
             )
-            self.layout.insertWidget(self.layout.count() - 1, newMessage)
+            # self.layout.insertWidget(self.layout.count() - 1, newMessage)
+            self.layout.addWidget(newMessage)
 
             QTimer.singleShot(0, self.scrollToBottom)
 
@@ -109,35 +110,34 @@ class TextBubbleWidget(QWidget):
         hbox = QHBoxLayout()
         hbox.setContentsMargins(0, 0, 0, 0)
 
-        match sender:
-            case "client":
-                bubbleColor = self.ui.sendBubble
-                bubble = TextBubble(text, bubbleColor, self.lightmode)
+        if sender == "client":
+            bubbleColor = self.ui.sendBubble
+            bubble = TextBubble(text, bubbleColor, self.lightmode)
 
-                hbox.addSpacerItem(
-                    QSpacerItem(1, 1, QSizePolicy.Expanding, QSizePolicy.Preferred)
-                )
-                hbox.addWidget(bubble)
+            hbox.addSpacerItem(
+                QSpacerItem(1, 1, QSizePolicy.Expanding, QSizePolicy.Preferred)
+            )
+            hbox.addWidget(bubble)
 
-            case "server":
-                bubbleColor = self.ui.reciveBubble
-                bubble = TextBubble(text, bubbleColor, self.lightmode)
+        if sender == "server":
+            bubbleColor = self.ui.reciveBubble
+            bubble = TextBubble(text, bubbleColor, self.lightmode)
 
-                hbox.addWidget(bubble)
-                hbox.addSpacerItem(
-                    QSpacerItem(1, 1, QSizePolicy.Expanding, QSizePolicy.Preferred)
-                )
+            hbox.addWidget(bubble)
+            hbox.addSpacerItem(
+                QSpacerItem(1, 1, QSizePolicy.Expanding, QSizePolicy.Preferred)
+            )
 
-            case "info":
-                bubbleColor = self.ui.informationBubble
-                bubble = TextBubble(text, bubbleColor, self.lightmode)
+        if sender == "info":
+            bubbleColor = self.ui.informationBubble
+            bubble = TextBubble(text, bubbleColor, self.lightmode)
 
-                hbox.addSpacerItem(
-                    QSpacerItem(1, 1, QSizePolicy.Expanding, QSizePolicy.Preferred)
-                )
-                hbox.addWidget(bubble)
-                hbox.addSpacerItem(
-                    QSpacerItem(1, 1, QSizePolicy.Expanding, QSizePolicy.Preferred)
-                )
+            hbox.addSpacerItem(
+                QSpacerItem(1, 1, QSizePolicy.Expanding, QSizePolicy.Preferred)
+            )
+            hbox.addWidget(bubble)
+            hbox.addSpacerItem(
+                QSpacerItem(1, 1, QSizePolicy.Expanding, QSizePolicy.Preferred)
+            )
 
         self.setLayout(hbox)
