@@ -8,6 +8,22 @@ from resources.Theme import UI
 
 sio = socketio.Client()
 
+testdata = [
+    {"message": "1", "sender": "server"},
+    {"message": "2", "sender": "client"},
+    {"message": "3", "sender": "server"},
+    {"message": "4", "sender": "client"},
+    {"message": "5", "sender": "server"},
+    {"message": "6", "sender": "client"},
+    {"message": "7", "sender": "server"},
+    {"message": "Can you help me with the project?", "sender": "client"},
+    {
+        "message": "You're welcome! Let me know if you need anything else.",
+        "sender": "server",
+    },
+    {"message": "I'm doing well, thanks for asking.", "sender": "client"},
+]
+
 
 class SocketThread(QThread):
     eventSignal = pyqtSignal(str, object)
@@ -22,7 +38,11 @@ class SocketThread(QThread):
                     "initialize", data
                 )  # Emit signal to main thread when data is received
 
-            sio.connect("http://localhost:5000", auth={"token": "maza auth hehe"})
+            sio.connect(
+                "http://192.168.0.101:5000",
+                auth={"token": "zelnaAuthentication"},
+                retry=False,
+            )
 
             sio.wait()
         except Exception as e:
@@ -55,7 +75,8 @@ class mainWindow(QWidget):
         self.setLayout(layout)
 
         # Adding chat messages for testing:
-        self.chatBox.addMessage("new message not from dataset", "info")
+
+        self.chatBox.initMessages(testdata)
 
         self.messageBox.updateText("Thank you!")
 
@@ -70,14 +91,13 @@ class mainWindow(QWidget):
         self.socketThread.start()
 
     def handleInitialization(self, eventName, data):
-        match eventName:
-            case "initialize":
-                self.chatBox.clearMesages()
-                print("messages cleared")
-                self.chatBox.initMessages(data)
-                print("initialized")
-            case "message":
-                self.chatBox.addMessage(data.get("message"), data.get("sender"))
+        if eventName == "initialize":
+            self.chatBox.clearMesages()
+            print("messages cleared")
+            self.chatBox.initMessages(data)
+            print("initialized")
+        if eventName == "message":
+            self.chatBox.addMessage(data.get("message"), data.get("sender"))
 
 
 if __name__ == "__main__":

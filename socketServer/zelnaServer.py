@@ -2,16 +2,13 @@ from flask import Flask
 from flask_socketio import SocketIO
 
 testdata = [
-    {"message": "Can you help me with the project?", "sender": "server"},
-    {"message": "Sure! What do you need help with?", "sender": "client"},
-    {
-        "message": "You're welcome! Let me know if you need anything else.",
-        "sender": "server",
-    },
-    {"message": "Thank you, that's very helpful.", "sender": "client"},
-    {"message": "I'm doing well, thanks for asking.", "sender": "server"},
-    {"message": "Hello, how are you?", "sender": "client"},
-    {"message": "Thank you, that's very helpful.", "sender": "server"},
+    {"message": "1", "sender": "server"},
+    {"message": "2", "sender": "client"},
+    {"message": "3", "sender": "server"},
+    {"message": "4", "sender": "client"},
+    {"message": "5", "sender": "server"},
+    {"message": "6", "sender": "client"},
+    {"message": "7", "sender": "server"},
     {"message": "Can you help me with the project?", "sender": "client"},
     {
         "message": "You're welcome! Let me know if you need anything else.",
@@ -45,4 +42,4 @@ def create_app():
 
 if __name__ == "__main__":
     app = create_app()
-    socketio.run(app)
+    socketio.run(app, host="0.0.0.0", port=5000)
