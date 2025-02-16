@@ -2,6 +2,7 @@ class UI:
     def __init__(self, lightmode=False):
         self.fontFamily = "Arial"
         self.fontSize = "24px"
+        self.borderRadius = "22px"
 
         # chat bubble blur
         self.bubbleBlurOffset = (0, 0)
@@ -10,7 +11,7 @@ class UI:
         # lightmode
         if lightmode:
             self.fontColor = "rgb(50, 50, 50)"
-            self.chatBorders = "border: 3px solid #8AA2BF; border-radius: 14px;"
+            self.chatBorders = "border: 3px solid #8AA2BF;"
             self.windowBackground = "#DAEAFF"
             self.messageBoxBackground = "#FFD6C0"
 
@@ -24,7 +25,7 @@ class UI:
         # darkmode
         else:
             self.fontColor = "#021526"
-            self.chatBorders = "border: 3px solid #03346E; border-radius: 14px;"
+            self.chatBorders = "border: 3px solid #03346E;"
             self.windowBackground = "#001938"
             self.messageBoxBackground = "#6EACDA"
 

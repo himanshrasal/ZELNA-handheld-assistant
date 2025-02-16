@@ -15,6 +15,7 @@ class MessageBox(QScrollArea):
         self.setStyleSheet(
             f"""
                            background-color: {self.ui.messageBoxBackground};
+                           border-radius:{self.ui.borderRadius};
                            {self.ui.chatBorders}
                         """
         )

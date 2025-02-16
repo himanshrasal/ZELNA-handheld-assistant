@@ -33,7 +33,7 @@ class ChatBox(QScrollArea):
         self.setWidget(self.container)
         self.setWidgetResizable(True)
 
-        self.setStyleSheet(f"{self.ui.chatBorders}")  # scroll window styles
+        self.setStyleSheet(f"{self.ui.chatBorders} border-radius:{self.ui.borderRadius}")  # scroll window styles
 
         self.layout.addSpacerItem(
             QSpacerItem(1, 1, QSizePolicy.Preferred, QSizePolicy.Expanding)
@@ -90,7 +90,7 @@ class TextBubble(QLabel):
                         background-color: {color};
                         padding: 14px 12px;
                         margin: 14px 20px;
-                        border-radius: 14px;
+                        border-radius: {self.ui.borderRadius};
                         """
         )
 
