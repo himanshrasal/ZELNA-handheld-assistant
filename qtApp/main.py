@@ -56,7 +56,7 @@ class mainWindow(QWidget):
         self.initSocketIO()
 
     def initUI(self):
-        self.lightMode = True  # set light mode on or off
+        self.lightMode = False  # set light mode on or off
         ui = UI(self.lightMode)
 
         self.setWindowTitle("ZELNA")
