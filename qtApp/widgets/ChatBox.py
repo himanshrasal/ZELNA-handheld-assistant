@@ -7,7 +7,6 @@ from PyQt5.QtWidgets import (
     QSizePolicy,
     QScrollArea,
     QGraphicsDropShadowEffect,
-    QApplication,
 )
 from PyQt5.QtCore import QTimer, Qt
 from PyQt5.QtGui import QColor
@@ -45,7 +44,7 @@ class ChatBox(QScrollArea):
             return
 
         newMessage = TextBubbleWidget(text, sender, lightmode=self.lightmode)
-        self.layout.insertWidget(self.layout.count() - 1, newMessage)
+        self.layout.addWidget(newMessage)
 
         QTimer.singleShot(0, self.scrollToBottom)
 

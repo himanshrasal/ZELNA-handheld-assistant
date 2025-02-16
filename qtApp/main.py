@@ -29,8 +29,9 @@ class SocketThread(QThread):
     eventSignal = pyqtSignal(str, object)
 
     def run(self):
-        try:
+        port = "http://192.168.0.101:5000"
 
+        try:
             @sio.on("initialize")
             def handleInitialization(data):
                 print("Received data from server")
@@ -39,14 +40,16 @@ class SocketThread(QThread):
                 )  # Emit signal to main thread when data is received
 
             sio.connect(
-                "http://192.168.0.101:5000",
+                port,
+                transports=["websocket"],
                 auth={"token": "zelnaAuthentication"},
-                retry=False,
+                retry=True,
             )
 
             sio.wait()
         except Exception as e:
             print(f"Socket.IO connection error: {e}")
+            self.eventSignal.emit("message", {"message":f"Couldn't connect to the server.\nMake sure the server is running at port: {port}", "sender":"info"})
 
 
 class mainWindow(QWidget):
