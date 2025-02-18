@@ -58,7 +58,7 @@ class ChatBox(QScrollArea):
 
             QTimer.singleShot(0, self.scrollToBottom)
 
-    def clearMesages(self):
+    def clearMessages(self):
         while self.layout.count():
             widget = self.layout.takeAt(0).widget()
             if widget:
