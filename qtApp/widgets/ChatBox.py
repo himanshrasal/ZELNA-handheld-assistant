@@ -70,6 +70,11 @@ class ChatBox(QScrollArea):
             self.verticalScrollBar().maximum()
         )  # Move scrollbar
 
+    def scrollUp(self, scrollAmount=100):
+        self.verticalScrollBar().setValue(self.verticalScrollBar().value() - scrollAmount)
+        
+    def scrollDown(self, scrollAmount=100):
+        self.verticalScrollBar().setValue(self.verticalScrollBar().value() + scrollAmount)
 
 class TextBubble(QLabel):
     def __init__(self, text, color, lightmode=False):
