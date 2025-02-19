@@ -32,10 +32,12 @@ class ChatBox(QScrollArea):
         self.setWidget(self.container)
         self.setWidgetResizable(True)
 
-        self.setStyleSheet(f"{self.ui.chatBorders} border-radius:{self.ui.borderRadius}")  # scroll window styles
+        self.setStyleSheet(
+            f"{self.ui.chatBorders} border-radius:{self.ui.borderRadius}"
+        )  # scroll window styles
 
         self.layout.addSpacerItem(
-            QSpacerItem(1, 1, QSizePolicy.Preferred, QSizePolicy.Expanding)
+            QSpacerItem(1, 1, QSizePolicy.Preferred, QSizePolicy.MinimumExpanding)
         )
 
     # temp
@@ -71,10 +73,15 @@ class ChatBox(QScrollArea):
         )  # Move scrollbar
 
     def scrollUp(self, scrollAmount=100):
-        self.verticalScrollBar().setValue(self.verticalScrollBar().value() - scrollAmount)
-        
+        self.verticalScrollBar().setValue(
+            self.verticalScrollBar().value() - scrollAmount
+        )
+
     def scrollDown(self, scrollAmount=100):
-        self.verticalScrollBar().setValue(self.verticalScrollBar().value() + scrollAmount)
+        self.verticalScrollBar().setValue(
+            self.verticalScrollBar().value() + scrollAmount
+        )
+
 
 class TextBubble(QLabel):
     def __init__(self, text, color, lightmode=False):
@@ -83,7 +90,7 @@ class TextBubble(QLabel):
         self.lightmode = lightmode
         self.ui = UI(self.lightmode)
 
-        # self.setMaximumWidth(500)  #max width for text bubble
+        self.setMaximumWidth(1000)  #max width for text bubble
         self.setWordWrap(True)
 
         self.setStyleSheet(
@@ -145,3 +152,4 @@ class TextBubbleWidget(QWidget):
             )
 
         self.setLayout(hbox)
+        self.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
