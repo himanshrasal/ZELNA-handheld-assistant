@@ -27,7 +27,7 @@ class MessageBox(QScrollArea):
 
         self.textArea = QLabel("your text will apper here")
         self.textArea.setWordWrap(True)
-        self.textArea.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.textArea.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         self.textArea.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.textArea.setStyleSheet(
             f"""
