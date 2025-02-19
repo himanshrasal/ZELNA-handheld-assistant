@@ -7,7 +7,7 @@ else:
     import RPi.GPIO as GPIO
 
 from vosk import Model, KaldiRecognizer
-from PyQt5.QtCore import QThread, pyqtSignal
+from PyQt5.QtCore import QThread, pyqtSignal, Qt
 from PyQt5.QtWidgets import QWidget, QApplication, QVBoxLayout
 from widgets.ChatBox import ChatBox
 from widgets.MessageBox import MessageBox
@@ -24,17 +24,20 @@ sio = socketio.Client(
 
 class mainWindow(QWidget):
     def __init__(self):
+        self.ResponseGenerationActive = False
         super().__init__()
         self.initUI()
         self.initThreads()
 
     def initUI(self):
+
         self.lightMode = True  # set light mode on or off
         ui = UI(self.lightMode)
 
         self.setWindowTitle("ZELNA")
         self.setGeometry(0, 0, 640, 480)
         self.setStyleSheet(f"""background-color:{ui.windowBackground}; border: none;""")
+        self.setCursor(Qt.BlankCursor)
 
         layout = QVBoxLayout()
 
@@ -47,7 +50,7 @@ class mainWindow(QWidget):
         layout.addWidget(self.messageBox)
         self.setLayout(layout)
 
-        self.messageBox.updateText("Your text will appear here")
+        self.messageBox.updateText("  ( > w < )  ")
 
     def initThreads(self):
         # Initialize threads
@@ -69,10 +72,10 @@ class mainWindow(QWidget):
         self.gpioThread.quit()
         self.SpeechToTextThread.quit()
 
-        # Wait for threads to finish
-        self.socketThread.wait()
-        self.gpioThread.wait()
-        self.SpeechToTextThread.wait()
+        # # Wait for threads to finish
+        # self.socketThread.wait()
+        # self.gpioThread.wait()
+        # self.SpeechToTextThread.wait()
 
         event.accept()
 
@@ -81,13 +84,19 @@ class mainWindow(QWidget):
         if eventName == "initialize":
             self.chatBox.clearMessages()
             self.chatBox.initMessages(data)
+            self.setResponseGenerationActive(False)
 
         if eventName == "message":
             self.chatBox.addMessage(data.get("message"), data.get("sender"))
 
+        if eventName == "response":
+            self.chatBox.addMessage(data.get("message"), data.get("sender"))
+            self.setResponseGenerationActive(False)
+
     def handleGpio(self, eventName):
         if eventName == "powerButtonPressed":
-            self.SpeechToTextThread.isListening = True
+            if not self.ResponseGenerationActive:
+                self.SpeechToTextThread.isListening = True
 
         if eventName == "powerButtonReleased":
             self.SpeechToTextThread.isListening = False
@@ -109,9 +118,8 @@ class mainWindow(QWidget):
             self.messageBox.updateText(data.get("message"))
 
         if eventName == "finalResult":
+            self.chatBox.addMessage(data.get("message"), "client")
             self.emitToServer("message", data.get("message"))
-            self.chatBox.addMessage(data.get("message"), "user")
-            self.messageBox.updateText("Your text will appear here")
 
     def emitToServer(self, eventName, message):
         retry = True
@@ -121,6 +129,7 @@ class mainWindow(QWidget):
             if sio.connected:
                 try:
                     sio.emit(eventName, message)
+                    self.setResponseGenerationActive(True)
                     retry = False
                 except Exception as e:
                     tries -= 1
@@ -134,10 +143,17 @@ class mainWindow(QWidget):
                 tries -= 1
                 if not reported:
                     self.chatBox.addMessage(
-                        "Couldn't send message.\nMake sure the server is running.",
+                        "Couldn't send prevoius message.\nMake sure the server is running.",
                         "info",
                     )
                     reported = True
+                    
+    def setResponseGenerationActive(self, value: bool):
+        self.ResponseGenerationActive = value
+        if value:
+            self.messageBox.updateText("Response is being generated")
+        else:
+            self.messageBox.updateText(" ( > w < ) ")
 
 
 # QThread classes for handling sockets and GPIO in separate
@@ -163,6 +179,10 @@ class SocketThread(QThread):
                         "message",
                         {"message": "Disconnected from server", "sender": "info"},
                     )
+
+                @sio.on("response")
+                def handleMessage(message):
+                    self.socketSignal.emit("response", message)
 
                 sio.connect(
                     port,
@@ -256,7 +276,7 @@ class SpeechToText(QThread):
             # Start audio stream
             with sounddevice.RawInputStream(
                 samplerate=self.samplerate,
-                blocksize=4000,  # Smaller blocksize for lower latency
+                blocksize=2048,  # Smaller blocksize for lower latency
                 device=None,
                 dtype="int16",
                 channels=1,

@@ -34,6 +34,7 @@ def handleDisconnection():
     
 @socketio.on("message")
 def handleMessage(data):
+    socketio.emit("response", {"message": "message recived", "sender": "server"})
     print("message received", data)
 
 
