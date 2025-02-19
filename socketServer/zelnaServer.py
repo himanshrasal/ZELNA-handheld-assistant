@@ -31,6 +31,10 @@ def handleConnection(auth):
 @socketio.on("disconnect")
 def handleDisconnection():
     print("client disconnected")
+    
+@socketio.on("message")
+def handleMessage(data):
+    print("message received", data)
 
 
 def create_app():
