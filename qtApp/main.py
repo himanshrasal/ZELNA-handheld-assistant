@@ -104,10 +104,10 @@ class mainWindow(QWidget):
             self.SpeechToTextThread.resetRecognizer()
             self.SpeechToTextThread.clearQueue()
 
-        if eventName == "volumeUpButton":
+        if eventName == "upButton":
             self.chatBox.scrollUp()
 
-        if eventName == "volumeDownButton":
+        if eventName == "downButton":
             self.chatBox.scrollDown()
 
     def handleStt(self, eventName, data):
@@ -146,6 +146,7 @@ class mainWindow(QWidget):
                         "Couldn't send prevoius message.\nMake sure the server is running.",
                         "info",
                     )
+                    self.setResponseGenerationActive(False)
                     reported = True
                     
     def setResponseGenerationActive(self, value: bool):
@@ -209,15 +210,19 @@ class GPIOThread(QThread):
     def run(self):
         try:
             # pins
-            powerPin = 5
+            powerPin = 26
             powerPinPressed = False
 
-            volumeUpPin = 6
-            volumeUpPinPressed = False
+            upPin = 6
+            upPinPressed = False
+            
+            downPin = 5
+            downPinPressed = False
 
             GPIO.setmode(GPIO.BCM)
             GPIO.setup(powerPin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-            GPIO.setup(volumeUpPin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+            GPIO.setup(upPin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+            GPIO.setup(downPin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
             while True:
                 # Power Pin
@@ -230,14 +235,21 @@ class GPIOThread(QThread):
                         self.gpioSignal.emit("powerButtonReleased")
                     powerPinPressed = False
 
-                # volume pin interrupts
-                if not GPIO.input(volumeUpPin):
-                    if not volumeUpPinPressed:
-                        self.gpioSignal.emit("volumeUpButton")
-                        volumeUpPinPressed = True
+                # up / down pin interrupts
+                if not GPIO.input(upPin):
+                    if not upPinPressed:
+                        self.gpioSignal.emit("upButton")
+                        upPinPressed = True
                 else:
-                    volumeUpPinPressed = False
+                    upPinPressed = False
 
+                if not GPIO.input(downPin):
+                    if not downPinPressed:
+                        self.gpioSignal.emit("downButton")
+                        downPinPressed = True
+                else:
+                    downPinPressed = False
+                    
                 time.sleep(0.05)
 
         except Exception as e:
