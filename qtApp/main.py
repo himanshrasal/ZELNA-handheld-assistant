@@ -100,9 +100,6 @@ class mainWindow(QWidget):
 
         if eventName == "powerButtonReleased":
             self.SpeechToTextThread.isListening = False
-            time.sleep(0.03)  # allow any ongoing callback to finish
-            self.SpeechToTextThread.resetRecognizer()
-            self.SpeechToTextThread.clearQueue()
 
         if eventName == "upButton":
             self.chatBox.scrollUp()
@@ -118,6 +115,7 @@ class mainWindow(QWidget):
             self.messageBox.updateText(data.get("message"))
 
         if eventName == "finalResult":
+            self.messageBox.updateText(data.get("message"))
             self.chatBox.addMessage(data.get("message"), "client")
             self.emitToServer("message", data.get("message"))
 
@@ -148,7 +146,7 @@ class mainWindow(QWidget):
                     )
                     self.setResponseGenerationActive(False)
                     reported = True
-                    
+
     def setResponseGenerationActive(self, value: bool):
         self.ResponseGenerationActive = value
         if value:
@@ -215,7 +213,7 @@ class GPIOThread(QThread):
 
             upPin = 6
             upPinPressed = False
-            
+
             downPin = 5
             downPinPressed = False
 
@@ -249,7 +247,7 @@ class GPIOThread(QThread):
                         downPinPressed = True
                 else:
                     downPinPressed = False
-                    
+
                 time.sleep(0.05)
 
         except Exception as e:
@@ -265,30 +263,25 @@ class SpeechToText(QThread):
         super().__init__()
         self.queue = queue.Queue()
         self.isListening = False
-        self.model = Model(model_name="vosk-model-small-en-us-0.15")  # Load model once
+        self.resetRequested = False  # Use a reset request flag
+        self.model = Model(model_name="vosk-model-small-en-us-0.15")
         self.samplerate = None
 
         self.prevPartialText = ""
         self.finalText = ""
 
     def callback(self, indata, frames, time, status):
-        """This is called (from a separate thread) for each audio block."""
-        # if status:
-        #     print(status, file=sys.stderr)
-        if self.isListening:  # Only add data to the queue if listening
+        if self.isListening:
             self.queue.put(bytes(indata))
 
     def run(self):
-        """Main thread loop for processing audio."""
         try:
-            # Set default sampling rate and device
             device_info = sounddevice.query_devices(None, "input")
             self.samplerate = int(device_info["default_samplerate"])
 
-            # Start audio stream
             with sounddevice.RawInputStream(
                 samplerate=self.samplerate,
-                blocksize=2048,  # Smaller blocksize for lower latency
+                blocksize=2048,
                 device=None,
                 dtype="int16",
                 channels=1,
@@ -297,23 +290,28 @@ class SpeechToText(QThread):
                 self.rec = KaldiRecognizer(self.model, self.samplerate)
 
                 while True:
+                    # Handle reset requests safely
+                    if self.resetRequested:
+                        self.resetProperties()
+                        self.resetRequested = False
+
                     if self.isListening:
                         if not self.queue.empty():
                             data = self.queue.get()
 
-                            if self.rec.AcceptWaveform(data):  # final text
+                            if self.rec.AcceptWaveform(data):
                                 result = self.rec.Result()
                                 finalText = json.loads(result).get("text", "")
                                 if finalText:
-                                    self.finalText = self.finalText + " " + finalText
+                                    self.finalText += " " + finalText
 
-                            else:  # partial text
+                            else:
                                 partialResult = json.loads(
                                     self.rec.PartialResult()
                                 ).get("partial", "")
                                 if (
                                     partialResult
-                                    and not partialResult == self.prevPartialText
+                                    and partialResult != self.prevPartialText
                                 ):
                                     self.sttSignal.emit(
                                         "partialResult",
@@ -323,46 +321,52 @@ class SpeechToText(QThread):
                                     )
                                     self.prevPartialText = partialResult
                     else:
-                        # reutrn if no partial or final result is available
-                        if not self.prevPartialText and not self.finalText:
-                            # Sleep to reduce CPU usage when not listening
-                            time.sleep(0.1)
-                            continue
-
-                        # send partial result if final result is not available but partial result is available
-                        if self.prevPartialText and not self.finalText:
-                            self.sttSignal.emit(
-                                "finalResult", {"message": self.prevPartialText}
-                            )
-
-                        # send final + partial result if final and partial result is available
+                        # Send combined final + partial result if both exist
                         if self.prevPartialText and self.finalText:
-                            # self.finalText = self.finalText + " " + self.prevPartialText
                             self.sttSignal.emit(
-                                "finalResult", {"message": self.finalText.strip()}
+                                "finalResult",
+                                {
+                                    "message": f"{self.finalText.strip()} {self.prevPartialText.strip()}".strip()
+                                },
                             )
 
-                        # reset variables at end of listening
-                        if self.prevPartialText or self.finalText:
-                            # reset variables
-                            self.prevPartialText = ""
-                            self.finalText = ""
+                        # Send only partial result if final text not available
+                        elif self.prevPartialText and not self.finalText:
+                            self.sttSignal.emit(
+                                "finalResult",
+                                {"message": self.prevPartialText.strip()},
+                            )
+
+                        # Send only final result if partial text not available
+                        elif not self.prevPartialText and self.finalText:
+                            self.sttSignal.emit(
+                                "finalResult",
+                                {"message": self.finalText.strip()},
+                            )
+
+                        # Request reset once listening stops
+                        if not self.resetRequested:
+                            self.requestReset()
+
+                        time.sleep(0.1)
 
         except Exception as e:
             self.sttSignal.emit("message", {"message": f"An error occurred: {str(e)}"})
 
-    def clearQueue(self):
+    def resetProperties(self):
+        """clears queue, kaldi recognizer and variables"""
         while not self.queue.empty():
             try:
                 self.queue.get_nowait()
             except queue.Empty:
                 break
-        # force reset variables just in case
+        self.rec = KaldiRecognizer(self.model, self.samplerate)
         self.prevPartialText = ""
         self.finalText = ""
 
-    def resetRecognizer(self):
-        self.rec = KaldiRecognizer(self.model, self.samplerate)
+    def requestReset(self):
+        """Safe method for other threads to request a reset"""
+        self.resetRequested = True
 
 
 if __name__ == "__main__":
