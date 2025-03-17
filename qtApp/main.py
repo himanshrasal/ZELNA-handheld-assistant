@@ -255,7 +255,6 @@ class GPIOThread(QThread):
         finally:
             GPIO.cleanup()
 
-
 class SpeechToText(QThread):
     sttSignal = pyqtSignal(str, object)
 
@@ -263,12 +262,13 @@ class SpeechToText(QThread):
         super().__init__()
         self.queue = queue.Queue()
         self.isListening = False
-        self.resetRequested = False  # Use a reset request flag
+        self.resetRequested = False
         self.model = Model(model_name="vosk-model-small-en-us-0.15")
         self.samplerate = None
 
         self.prevPartialText = ""
         self.finalText = ""
+        self.lastWord = ""
 
     def callback(self, indata, frames, time, status):
         if self.isListening:
@@ -290,7 +290,6 @@ class SpeechToText(QThread):
                 self.rec = KaldiRecognizer(self.model, self.samplerate)
 
                 while True:
-                    # Handle reset requests safely
                     if self.resetRequested:
                         self.resetProperties()
                         self.resetRequested = False
@@ -299,34 +298,36 @@ class SpeechToText(QThread):
                         if not self.queue.empty():
                             data = self.queue.get()
 
-                            # If a complete phrase is recognized
                             if self.rec.AcceptWaveform(data):
                                 result = json.loads(self.rec.Result())
                                 finalText = result.get("text", "").strip()
 
                                 if finalText:
-                                    # Store only the latest recognized sentence
-                                    self.finalText = finalText
+                                    if self.finalText and not self.finalText.endswith(" "):
+                                        self.finalText += " "
+                                    self.finalText += finalText
+                                    self.prevPartialText = ""
+                                    self.lastWord = finalText.split()[-1] if finalText else ""
 
                             else:
-                                # Process partial results for live feedback
                                 partialResult = json.loads(self.rec.PartialResult()).get("partial", "").strip()
 
-                                if partialResult and partialResult != self.prevPartialText:
-                                    self.sttSignal.emit(
-                                        "partialResult",
-                                        {"message": f"{self.finalText} {partialResult}".strip()},
-                                    )
+                                if partialResult != self.prevPartialText:
+                                    combinedText = self.finalText
+                                    if self.finalText and (partialResult and not partialResult.startswith(self.lastWord)):
+                                        combinedText += " "
+                                    combinedText += partialResult
+
+                                    self.sttSignal.emit("partialResult", {"message": combinedText.strip()})
                                     self.prevPartialText = partialResult
 
                     else:
-                        # Only emit final result if it wasn't already emitted
                         if self.finalText and not self.resetRequested:
                             self.sttSignal.emit("finalResult", {"message": self.finalText.strip()})
                             self.finalText = ""
                             self.prevPartialText = ""
+                            self.lastWord = ""
 
-                        # Request reset once listening stops
                         if not self.resetRequested:
                             self.requestReset()
 
@@ -334,7 +335,6 @@ class SpeechToText(QThread):
             self.sttSignal.emit("message", {"message": f"An error occurred: {str(e)}"})
 
     def resetProperties(self):
-        """clears queue, kaldi recognizer and variables"""
         while not self.queue.empty():
             try:
                 self.queue.get_nowait()
@@ -343,9 +343,9 @@ class SpeechToText(QThread):
         self.rec = KaldiRecognizer(self.model, self.samplerate)
         self.prevPartialText = ""
         self.finalText = ""
+        self.lastWord = ""
 
     def requestReset(self):
-        """Safe method for other threads to request a reset"""
         self.resetRequested = True
 
 
