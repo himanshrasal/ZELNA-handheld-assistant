@@ -18,7 +18,7 @@ class ChatBox(QScrollArea):
         super().__init__()
         self.lightmode = lightmode
         self.ui = UI(lightmode=self.lightmode)
-        self.scrollAnimation = None  # To keep animation reference
+        self.scrollAnimation = None
 
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
@@ -26,7 +26,7 @@ class ChatBox(QScrollArea):
         self.container = QWidget()
         self.container.setStyleSheet("border:none; background:none;")
 
-        self.layout: QVBoxLayout = QVBoxLayout(self.container)
+        self.layout = QVBoxLayout(self.container)
         self.layout.setContentsMargins(0, 0, 0, 0)
         self.layout.setSpacing(0)
         self.setWidget(self.container)
@@ -36,55 +36,48 @@ class ChatBox(QScrollArea):
             f"{self.ui.chatBorders} border-radius:{self.ui.borderRadius}"
         )
 
+        # Spacer now at the bottom to push messages upwards
         self.layout.addSpacerItem(
             QSpacerItem(1, 1, QSizePolicy.Preferred, QSizePolicy.MinimumExpanding)
         )
 
-    # Adds a new message with smooth scroll animation
     def addMessage(self, text="", sender="info"):
         if (text == "") or (sender not in ["info", "client", "server"]):
             return
 
         newMessage = TextBubbleWidget(text, sender, lightmode=self.lightmode)
-        self.layout.insertWidget(self.layout.count() - 1, newMessage)  # Insert before spacer
+        self.layout.insertWidget(self.layout.count() - 1, newMessage)  # Add above spacer
 
-        self.container.adjustSize()  # Force layout to resize immediately
-        QTimer.singleShot(0, self.scrollToBottom)  # Scroll after layout updates
+        # Ensure scroll stays at the bottom after adding a new message
+        QTimer.singleShot(0, self.scrollToBottom)
 
-
-    # Initializes chat with existing dataset
     def initMessages(self, dataset):
         for i in dataset:
             newMessage = TextBubbleWidget(
                 i.get("message"), i.get("sender"), lightmode=self.lightmode
             )
-            self.layout.addWidget(newMessage)
+            self.layout.insertWidget(self.layout.count() - 1, newMessage)
             QTimer.singleShot(0, self.scrollToBottom)
 
-    # Clears all messages
     def clearMessages(self):
-        while self.layout.count():
+        while self.layout.count() > 1:  # Keep spacer intact
             widget = self.layout.takeAt(0).widget()
             if widget:
                 widget.deleteLater()
 
-        self.container.adjustSize() # Force layout to resize immediately
+        self.container.adjustSize()
 
-    # Smooth scroll to bottom with animation and easing
     def scrollToBottom(self, duration=500):
-        self.container.adjustSize()  # Ensure proper widget resizing
+        """Ensure the scroll bar smoothly reaches the bottom."""
+        self.container.adjustSize()
         self.animateScroll(self.verticalScrollBar().maximum(), duration)
 
-
-    # Smooth scroll up
     def scrollUp(self, scrollAmount=100, duration=300):
         self.animateScroll(self.verticalScrollBar().value() - scrollAmount, duration)
 
-    # Smooth scroll down
     def scrollDown(self, scrollAmount=100, duration=300):
         self.animateScroll(self.verticalScrollBar().value() + scrollAmount, duration)
 
-    # Generic animated scroll function
     def animateScroll(self, targetValue, duration=300):
         scrollbar = self.verticalScrollBar()
         targetValue = max(scrollbar.minimum(), min(scrollbar.maximum(), targetValue))
@@ -93,7 +86,7 @@ class ChatBox(QScrollArea):
         animation.setDuration(duration)
         animation.setStartValue(scrollbar.value())
         animation.setEndValue(targetValue)
-        animation.setEasingCurve(QEasingCurve.OutCubic)  # Smooth cubic easing
+        animation.setEasingCurve(QEasingCurve.OutCubic)
         animation.start()
 
         self.scrollAnimation = animation
@@ -105,7 +98,7 @@ class TextBubble(QLabel):
         self.lightmode = lightmode
         self.ui = UI(self.lightmode)
 
-        self.setMaximumWidth(1000)
+        self.setMaximumWidth(500)
         self.setWordWrap(True)
 
         self.setStyleSheet(
@@ -135,33 +128,26 @@ class TextBubbleWidget(QWidget):
 
         hbox = QHBoxLayout()
         hbox.setContentsMargins(0, 0, 0, 0)
+        hbox.setSpacing(10)
+
+        bubbleColor = (
+            self.ui.sendBubble if sender == "client"
+            else self.ui.reciveBubble if sender == "server"
+            else self.ui.informationBubble
+        )
+        bubble = TextBubble(text, bubbleColor, self.lightmode)
 
         if sender == "client":
-            bubbleColor = self.ui.sendBubble
-            bubble = TextBubble(text, bubbleColor, self.lightmode)
-            hbox.addSpacerItem(
-                QSpacerItem(1, 1, QSizePolicy.Expanding, QSizePolicy.Preferred)
-            )
+            hbox.addStretch()
             hbox.addWidget(bubble)
-
-        if sender == "server":
-            bubbleColor = self.ui.reciveBubble
-            bubble = TextBubble(text, bubbleColor, self.lightmode)
+        elif sender == "server":
             hbox.addWidget(bubble)
-            hbox.addSpacerItem(
-                QSpacerItem(1, 1, QSizePolicy.Expanding, QSizePolicy.Preferred)
-            )
-
-        if sender == "info":
-            bubbleColor = self.ui.informationBubble
-            bubble = TextBubble(text, bubbleColor, self.lightmode)
-            hbox.addSpacerItem(
-                QSpacerItem(1, 1, QSizePolicy.Expanding, QSizePolicy.Preferred)
-            )
+            hbox.addStretch()
+        else:  # info
+            hbox.addStretch()
             hbox.addWidget(bubble)
-            hbox.addSpacerItem(
-                QSpacerItem(1, 1, QSizePolicy.Expanding, QSizePolicy.Preferred)
-            )
+            hbox.addStretch()
 
         self.setLayout(hbox)
-        self.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.adjustSize()

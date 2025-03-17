@@ -299,56 +299,36 @@ class SpeechToText(QThread):
                         if not self.queue.empty():
                             data = self.queue.get()
 
+                            # If a complete phrase is recognized
                             if self.rec.AcceptWaveform(data):
-                                result = self.rec.Result()
-                                finalText = json.loads(result).get("text", "")
+                                result = json.loads(self.rec.Result())
+                                finalText = result.get("text", "").strip()
+
                                 if finalText:
-                                    self.finalText += " " + finalText
+                                    # Store only the latest recognized sentence
+                                    self.finalText = finalText
 
                             else:
-                                partialResult = json.loads(
-                                    self.rec.PartialResult()
-                                ).get("partial", "")
-                                if (
-                                    partialResult
-                                    and partialResult != self.prevPartialText
-                                ):
+                                # Process partial results for live feedback
+                                partialResult = json.loads(self.rec.PartialResult()).get("partial", "").strip()
+
+                                if partialResult and partialResult != self.prevPartialText:
                                     self.sttSignal.emit(
                                         "partialResult",
-                                        {
-                                            "message": f"{self.finalText} {partialResult}"
-                                        },
+                                        {"message": f"{self.finalText} {partialResult}".strip()},
                                     )
                                     self.prevPartialText = partialResult
+
                     else:
-                        # Send combined final + partial result if both exist
-                        if self.prevPartialText and self.finalText:
-                            self.sttSignal.emit(
-                                "finalResult",
-                                {
-                                    "message": f"{self.finalText.strip()} {self.prevPartialText.strip()}".strip()
-                                },
-                            )
-
-                        # Send only partial result if final text not available
-                        elif self.prevPartialText and not self.finalText:
-                            self.sttSignal.emit(
-                                "finalResult",
-                                {"message": self.prevPartialText.strip()},
-                            )
-
-                        # Send only final result if partial text not available
-                        elif not self.prevPartialText and self.finalText:
-                            self.sttSignal.emit(
-                                "finalResult",
-                                {"message": self.finalText.strip()},
-                            )
+                        # Only emit final result if it wasn't already emitted
+                        if self.finalText and not self.resetRequested:
+                            self.sttSignal.emit("finalResult", {"message": self.finalText.strip()})
+                            self.finalText = ""
+                            self.prevPartialText = ""
 
                         # Request reset once listening stops
                         if not self.resetRequested:
                             self.requestReset()
-
-                        time.sleep(0.1)
 
         except Exception as e:
             self.sttSignal.emit("message", {"message": f"An error occurred: {str(e)}"})

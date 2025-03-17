@@ -4,4 +4,6 @@
 *.pyo
 *.pyd
 
-test.py
+**/test.py
+
+**/chat_history.json
