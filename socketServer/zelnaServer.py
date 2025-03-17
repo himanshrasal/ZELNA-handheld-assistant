@@ -2,6 +2,7 @@ import json
 from flask import Flask
 from flask_socketio import SocketIO
 import ollama
+import re
 
 # Initialize SocketIO and global message storage
 socketio = SocketIO()
@@ -15,6 +16,9 @@ def create_app():
     socketio.init_app(app, cors_allowed_origins="*")
     return app
 
+def clean_text(text):
+    """Remove markdown-like formatting symbols from the text."""
+    return re.sub(r'[\*_/`~|<>]', '', text)
 
 def chatWithHistory(input):
     """Handle chat input while maintaining message history."""
@@ -30,7 +34,7 @@ def chatWithHistory(input):
 
     try:
         response = ollama.chat(model=model, messages=messages)
-        responseContent = response["message"]["content"]
+        responseContent = clean_text(response["message"]["content"])
         messages.append({"role": "assistant", "content": responseContent})
         # print(responseContent)
         return responseContent

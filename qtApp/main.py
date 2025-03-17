@@ -324,10 +324,10 @@ class SpeechToText(QThread):
                     else:
                         if self.finalText and not self.resetRequested:
                             self.sttSignal.emit("finalResult", {"message": self.finalText.strip()})
-                            self.finalText = ""
-                            self.prevPartialText = ""
-                            self.lastWord = ""
-
+                            
+                        # Ensure partial text on screen is cleared even if no final text
+                        self.sttSignal.emit("partialResult", {"message": "( > w < )"})
+                        
                         if not self.resetRequested:
                             self.requestReset()
 
