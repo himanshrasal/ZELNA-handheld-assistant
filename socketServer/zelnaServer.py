@@ -1,13 +1,17 @@
-import json
+import json, ollama, re, pyttsx3, base64
 from flask import Flask
 from flask_socketio import SocketIO
-import ollama
-import re
 
 # Initialize SocketIO and global message storage
 socketio = SocketIO()
 messages = []
-
+    
+#initialize pyttsx3 voice engine
+engine = pyttsx3.init()
+engine.setProperty("rate", 180)
+engine.setProperty("volume", 1.0)
+voices = engine.getProperty("voices")
+engine.setProperty("voice", voices[2].id)
 
 def create_app():
     """Create and configure Flask app with SocketIO."""
@@ -69,6 +73,17 @@ def load_messages_from_file(filename="chat_history.json"):
     except FileNotFoundError:
         print("No existing file found. Starting fresh.")
         return []
+    
+def TTS(text:str, path:str = "output.mp3"):
+    """Text to speech function using pyttsx3 engine"""
+    try:
+        engine.save_to_file(text, path)
+        engine.runAndWait()
+        engine.stop()
+        return True
+    except Exception as e:
+        print(f"Error while running TTS: {e}")
+        return False
 
 @socketio.on("connect")
 def handleConnection(auth):
@@ -112,11 +127,23 @@ def handleMessage(message):
             return
 
         print(f"Message received: {message}")
+
+        # Process message from ollama and send response
         response = chatWithHistory(message)
         socketio.emit("response", {"message": response, "sender": "server"})
         save_messages_to_file(messages)
         print(f"Response sent: {response}")
 
+        # Convert response to speech
+        if TTS(response, "output.mp3"):
+            with open("output.mp3", "rb") as file:
+                encoded = base64.b64encode(file.read()).decode("utf-8")
+
+            socketio.emit("tts_audio", {"file": encoded})
+        
+        else:
+            socketio.emit("response", {"message": "Failed to generate TTS", "sender": "info"})
+                
     except Exception as e:
         print(f"Error while handling message: {e}")
         socketio.emit("response", {"message": "Failed to process message", "sender": "server"})
