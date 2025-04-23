@@ -16,6 +16,7 @@ engine.setProperty("voice", voices[2].id)
 os.makedirs("temp", exist_ok=True)
 WAV_PATH = "temp/output.wav"
 MP3_PATH = "temp/output.mp3"
+CHAT_HISTORY_PATH = "temp/chat_history.json"
 
 def create_app():
     """Create and configure Flask app with SocketIO."""
@@ -59,14 +60,14 @@ def parseOllamaMessageArrayToJson(messages):
     ]
 
 
-def save_messages_to_file(messages, filename="chat_history.json"):
+def save_messages_to_file(messages, filename=CHAT_HISTORY_PATH):
     """Save message history to a file."""
     with open(filename, "w") as file:
         json.dump(messages, file, indent=2)
     print(f"Messages saved to {filename}")
 
 
-def load_messages_from_file(filename="chat_history.json"):
+def load_messages_from_file(filename=CHAT_HISTORY_PATH):
     """Load message history from a file."""
     try:
         with open(filename, "r") as file:
