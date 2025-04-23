@@ -50,7 +50,7 @@ class mainWindow(QWidget):
         layout.addWidget(self.messageBox)
         self.setLayout(layout)
 
-        self.messageBox.updateText("  ( > w < )  ")
+        self.messageBox.updateText(" ( > w < ) ")
 
     def initThreads(self):
         # Initialize threads
@@ -102,17 +102,18 @@ class mainWindow(QWidget):
             self.SpeechToTextThread.isListening = False
 
         if eventName == "upButton":
-            self.chatBox.scrollUp()
+            self.chatBox.scrollUp(duration=100, scrollAmount=300)
 
         if eventName == "downButton":
-            self.chatBox.scrollDown()
+            self.chatBox.scrollDown(duration=100, scrollAmount=300)
 
     def handleStt(self, eventName, data):
         if eventName == "message":
             self.chatBox.addMessage(data.get("message"), "info")
 
         if eventName == "partialResult":
-            self.messageBox.updateText(data.get("message"))
+            if not self.ResponseGenerationActive:
+                self.messageBox.updateText(data.get("message"))
 
         if eventName == "finalResult":
             self.messageBox.updateText(data.get("message"))
@@ -123,11 +124,12 @@ class mainWindow(QWidget):
         retry = True
         reported = False
         tries = 3
+        
         while retry and tries > 0:
             if sio.connected:
                 try:
-                    sio.emit(eventName, message)
                     self.setResponseGenerationActive(True)
+                    sio.emit(eventName, message)
                     retry = False
                 except Exception as e:
                     tries -= 1
@@ -146,11 +148,12 @@ class mainWindow(QWidget):
                     )
                     self.setResponseGenerationActive(False)
                     reported = True
+                    
 
     def setResponseGenerationActive(self, value: bool):
         self.ResponseGenerationActive = value
         if value:
-            self.messageBox.updateText("Response is being generated")
+            self.messageBox.updateText("Response is being generated ...")
         else:
             self.messageBox.updateText(" ( > w < ) ")
 
@@ -326,7 +329,7 @@ class SpeechToText(QThread):
                             self.sttSignal.emit("finalResult", {"message": self.finalText.strip()})
                             
                         # Ensure partial text on screen is cleared even if no final text
-                        self.sttSignal.emit("partialResult", {"message": "( > w < )"})
+                        self.sttSignal.emit("partialResult", {"message": " ( > w < ) "})
                         
                         if not self.resetRequested:
                             self.requestReset()

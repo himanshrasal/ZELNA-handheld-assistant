@@ -67,7 +67,7 @@ class ChatBox(QScrollArea):
 
         self.container.adjustSize()
 
-    def scrollToBottom(self, duration=500):
+    def scrollToBottom(self, duration=1000):
         """Ensure the scroll bar smoothly reaches the bottom."""
         self.container.adjustSize()
         self.animateScroll(self.verticalScrollBar().maximum(), duration)
