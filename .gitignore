@@ -5,5 +5,6 @@
 *.pyd
 
 **/test.*
+**/tempCodeRunnerFile*
 
 temp/
