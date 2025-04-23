@@ -6,6 +6,4 @@
 
 **/test.*
 
-**/chat_history.json
-
-**/output.mp3
+./temp/*

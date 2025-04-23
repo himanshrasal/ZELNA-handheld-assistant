@@ -1,4 +1,4 @@
-import sys, time, socketio, sounddevice, queue, json
+import sys, time, socketio, sounddevice, queue, json, base64, os, subprocess, tempfile, threading
 
 # Import GPIO library based on platform
 if sys.platform == "win32":
@@ -12,6 +12,9 @@ from PyQt5.QtWidgets import QWidget, QApplication, QVBoxLayout
 from widgets.ChatBox import ChatBox
 from widgets.MessageBox import MessageBox
 from resources.Theme import UI
+
+# Define constant for placeholder text
+PLACEHOLDER_TEXT = " ( > w < ) "
 
 # initialize socketio client
 sio = socketio.Client(
@@ -50,32 +53,31 @@ class mainWindow(QWidget):
         layout.addWidget(self.messageBox)
         self.setLayout(layout)
 
-        self.messageBox.updateText(" ( > w < ) ")
+        self.messageBox.updateText(PLACEHOLDER_TEXT)
 
     def initThreads(self):
         # Initialize threads
         self.socketThread = SocketThread()
         self.gpioThread = GPIOThread()
-        self.SpeechToTextThread = SpeechToText()
+        self.speechToTextThread = SpeechToTextThread()
+        self.textToSpeechThread = TextToSpeechThread()
 
         # Connect the signal to a slot method in mainWindow
         self.socketThread.socketSignal.connect(self.handleSocket)
         self.gpioThread.gpioSignal.connect(self.handleGpio)
-        self.SpeechToTextThread.sttSignal.connect(self.handleStt)
+        self.speechToTextThread.sttSignal.connect(self.handleStt)
+        self.textToSpeechThread.ttsSignal.connect(self.handleTts)
 
         self.socketThread.start()
         self.gpioThread.start()
-        self.SpeechToTextThread.start()
+        self.speechToTextThread.start()
+        self.textToSpeechThread.start()
 
     def closeEvent(self, event):
         self.socketThread.quit()
         self.gpioThread.quit()
-        self.SpeechToTextThread.quit()
-
-        # # Wait for threads to finish
-        # self.socketThread.wait()
-        # self.gpioThread.wait()
-        # self.SpeechToTextThread.wait()
+        self.speechToTextThread.quit()
+        self.textToSpeechThread.quit()
 
         event.accept()
 
@@ -90,16 +92,25 @@ class mainWindow(QWidget):
             self.chatBox.addMessage(data.get("message"), data.get("sender"))
 
         if eventName == "response":
-            self.chatBox.addMessage(data.get("message"), data.get("sender"))
-            self.setResponseGenerationActive(False)
+            self.chatBox.addMessage(data.get("message"), data.get("sender")) #send message to chatbox
+            
+            audio_file = data.get("audio_file")       # get and play audio file from server
+            if audio_file:
+                self.textToSpeechThread.play_audio(audio_file)
 
+            self.setResponseGenerationActive(False)
+        
     def handleGpio(self, eventName):
         if eventName == "powerButtonPressed":
+            if self.textToSpeechThread.is_playing_audio():
+                self.textToSpeechThread.stop_playback()
+                time.sleep(0.1)
+            
             if not self.ResponseGenerationActive:
-                self.SpeechToTextThread.isListening = True
+                self.speechToTextThread.isListening = True
 
         if eventName == "powerButtonReleased":
-            self.SpeechToTextThread.isListening = False
+            self.speechToTextThread.isListening = False
 
         if eventName == "upButton":
             self.chatBox.scrollUp(duration=100, scrollAmount=300)
@@ -119,6 +130,10 @@ class mainWindow(QWidget):
             self.messageBox.updateText(data.get("message"))
             self.chatBox.addMessage(data.get("message"), "client")
             self.emitToServer("message", data.get("message"))
+            
+    def handleTts(self, eventName, data):
+        if eventName == "error":
+            self.messageBox.updateText(data.get("message"))
 
     def emitToServer(self, eventName, message):
         retry = True
@@ -155,7 +170,7 @@ class mainWindow(QWidget):
         if value:
             self.messageBox.updateText("Response is being generated ...")
         else:
-            self.messageBox.updateText(" ( > w < ) ")
+            self.messageBox.updateText(PLACEHOLDER_TEXT)
 
 
 # QThread classes for handling sockets and GPIO in separate
@@ -168,23 +183,23 @@ class SocketThread(QThread):
         port = "http://192.168.0.101:5000"
         retry_delay = 5  # seconds between retries
 
+        @sio.on("initialize")
+        def handleInitialization(data):
+            self.socketSignal.emit("initialize", data)
+
+        @sio.on("disconnect")
+        def handleDisconnection():
+            self.socketSignal.emit(
+                "message",
+                {"message": "Disconnected from server", "sender": "info"},
+            )
+
+        @sio.on("response")
+        def handleMessage(data):
+            self.socketSignal.emit("response", data)
+
         while True:
             try:
-
-                @sio.on("initialize")
-                def handleInitialization(data):
-                    self.socketSignal.emit("initialize", data)
-
-                @sio.on("disconnect")
-                def handleDisconnection():
-                    self.socketSignal.emit(
-                        "message",
-                        {"message": "Disconnected from server", "sender": "info"},
-                    )
-
-                @sio.on("response")
-                def handleMessage(message):
-                    self.socketSignal.emit("response", message)
 
                 sio.connect(
                     port,
@@ -258,7 +273,7 @@ class GPIOThread(QThread):
         finally:
             GPIO.cleanup()
 
-class SpeechToText(QThread):
+class SpeechToTextThread(QThread):
     sttSignal = pyqtSignal(str, object)
 
     def __init__(self):
@@ -329,7 +344,7 @@ class SpeechToText(QThread):
                             self.sttSignal.emit("finalResult", {"message": self.finalText.strip()})
                             
                         # Ensure partial text on screen is cleared even if no final text
-                        self.sttSignal.emit("partialResult", {"message": " ( > w < ) "})
+                        self.sttSignal.emit("partialResult", {"message": PLACEHOLDER_TEXT})
                         
                         if not self.resetRequested:
                             self.requestReset()
@@ -351,6 +366,103 @@ class SpeechToText(QThread):
     def requestReset(self):
         self.resetRequested = True
 
+class TextToSpeechThread(QThread):
+    ttsSignal = pyqtSignal(str, object)
+    
+    def __init__(self):
+        super().__init__()
+        # Check if mpg123 is installed
+        if not self._check_mpg123_installed():
+            self.ttsSignal.emit("error", {"message": "mpg123 not installed. Please run: sudo apt-get install mpg123"})
+            
+        self.current_process = None
+        self.lock = threading.Lock()
+        self.is_playing = False
+        self.audio_file = os.path.join(os.getcwd(), "qtApp/current_audio.mp3")
+    
+    def _check_mpg123_installed(self):
+        """Check if mpg123 is available in system PATH"""
+        try:
+            return subprocess.call(['which', 'mpg123'], 
+                                stdout=subprocess.DEVNULL,
+                                stderr=subprocess.DEVNULL) == 0
+        except:
+            return False
+    
+    def play_audio(self, base64_audio):
+        """Play audio using file in working directory"""
+        with self.lock:
+            self._stop_playback()
+            
+            try:
+                # Write decoded audio to file
+                with open(self.audio_file, 'wb') as f:
+                    f.write(base64.b64decode(base64_audio))
+                
+                # Start playback
+                self.is_playing = True
+                self.current_process = subprocess.Popen(
+                    ['mpg123', '-q', self.audio_file],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL
+                )
+                
+                # Monitor playback completion
+                threading.Thread(
+                    target=self._monitor_playback,
+                    daemon=True
+                ).start()
+                
+            except Exception as e:
+                self.is_playing = False
+                self.ttsSignal.emit("error", {
+                    "message": f"Playback failed: {str(e)}"
+                })
+                self._cleanup_file()
+    
+    def _monitor_playback(self):
+        """Wait for playback completion and clean up"""
+        try:
+            if self.current_process:
+                self.current_process.wait(timeout=1800)  # 30 minute max
+        finally:
+            with self.lock:
+                self.is_playing = False
+            self._cleanup_file()
+    
+    def _stop_playback(self):
+        """Force stop current playback"""
+        if self.current_process:
+            try:
+                self.current_process.terminate()
+                self.current_process.wait(timeout=0.5)
+            except:
+                try:
+                    self.current_process.kill()
+                except:
+                    pass
+            finally:
+                self.current_process = None
+                self.is_playing = False
+                self._cleanup_file()
+    def stop_playback(self):
+        """Public method to stop playback safely"""
+        with self.lock:
+            self._stop_playback()
+
+    
+    def _cleanup_file(self):
+        """Remove the audio file if it exists"""
+        try:
+            if os.path.exists(self.audio_file):
+                os.remove(self.audio_file)
+        except:
+            pass
+    
+    def is_playing_audio(self):
+        """Thread-safe playback status check"""
+        with self.lock:
+            return self.is_playing
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

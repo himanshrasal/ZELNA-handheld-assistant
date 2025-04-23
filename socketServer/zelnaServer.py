@@ -1,17 +1,21 @@
-import json, ollama, re, pyttsx3, base64
+import json, ollama, re, pyttsx3, base64, subprocess, os
 from flask import Flask
 from flask_socketio import SocketIO
 
 # Initialize SocketIO and global message storage
 socketio = SocketIO()
 messages = []
-    
-#initialize pyttsx3 voice engine
+
+# Initialize pyttsx3 voice engine
 engine = pyttsx3.init()
 engine.setProperty("rate", 180)
 engine.setProperty("volume", 1.0)
 voices = engine.getProperty("voices")
 engine.setProperty("voice", voices[2].id)
+
+os.makedirs("temp", exist_ok=True)
+WAV_PATH = "temp/output.wav"
+MP3_PATH = "temp/output.mp3"
 
 def create_app():
     """Create and configure Flask app with SocketIO."""
@@ -32,7 +36,7 @@ def chatWithHistory(input):
 
     # Trim message history to avoid overflow
     if len(messages) > maxHistory * 2:
-        messages = messages[-(maxHistory * 2) :]
+        messages = messages[-(maxHistory * 2):]
 
     messages.append({"role": "user", "content": input})
 
@@ -40,7 +44,6 @@ def chatWithHistory(input):
         response = ollama.chat(model=model, messages=messages)
         responseContent = clean_text(response["message"]["content"])
         messages.append({"role": "assistant", "content": responseContent})
-        # print(responseContent)
         return responseContent
 
     except Exception as e:
@@ -73,17 +76,23 @@ def load_messages_from_file(filename="chat_history.json"):
     except FileNotFoundError:
         print("No existing file found. Starting fresh.")
         return []
-    
-def TTS(text:str, path:str = "output.mp3"):
-    """Text to speech function using pyttsx3 engine"""
+
+
+def TTS(text: str, wav_path: str = WAV_PATH, mp3_path: str = MP3_PATH):
+    """Text to speech function using pyttsx3 engine and saving as a .wav file, then convert to .mp3."""
     try:
-        engine.save_to_file(text, path)
+        # Save as wav first
+        engine.save_to_file(text, wav_path)
         engine.runAndWait()
         engine.stop()
+
+        # Convert wav to mp3 using ffmpeg
+        subprocess.run(["ffmpeg", "-i", wav_path, mp3_path], check=True)
         return True
     except Exception as e:
-        print(f"Error while running TTS: {e}")
+        print(f"Error while running TTS or converting to MP3: {e}")
         return False
+
 
 @socketio.on("connect")
 def handleConnection(auth):
@@ -120,29 +129,29 @@ def handleMessage(message):
     try:
         # Support "clearmessages" command
         if message.lower().replace(" ", "") == "clearmessages":
-            save_messages_to_file([])
+            save_messages_to_file([])  # Clear messages
             messages = []
             print("Messages cleared")
-            socketio.emit("initialize", [])
+            socketio.emit("initialize", [])  # Reset client-side chat history
             return
 
         print(f"Message received: {message}")
 
         # Process message from ollama and send response
         response = chatWithHistory(message)
-        socketio.emit("response", {"message": response, "sender": "server"})
         save_messages_to_file(messages)
-        print(f"Response sent: {response}")
 
-        # Convert response to speech
-        if TTS(response, "output.mp3"):
-            with open("output.mp3", "rb") as file:
+        # Convert response to speech and then to MP3
+        if TTS(response, WAV_PATH, MP3_PATH):
+            with open(MP3_PATH, "rb") as file:
                 encoded = base64.b64encode(file.read()).decode("utf-8")
 
-            socketio.emit("tts_audio", {"file": encoded})
+            socketio.emit("response", {"message": response, "sender": "server", "audio_file": encoded})
+            print(f"Response and audio sent: {response}")
         
         else:
             socketio.emit("response", {"message": "Failed to generate TTS", "sender": "info"})
+            print("Failed to generate TTS")
                 
     except Exception as e:
         print(f"Error while handling message: {e}")
