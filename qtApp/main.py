@@ -1,4 +1,4 @@
-import sys, time, socketio, sounddevice, queue, json, base64, os, subprocess, tempfile, threading
+import sys, time, socketio, sounddevice, queue, json, base64, os, subprocess, threading
 
 # Import GPIO library based on platform
 if sys.platform == "win32":
@@ -7,14 +7,14 @@ else:
     import RPi.GPIO as GPIO
 
 from vosk import Model, KaldiRecognizer
-from PyQt5.QtCore import QThread, pyqtSignal, Qt
+from PyQt5.QtCore import Qt, QThread, pyqtSignal, QTimer
 from PyQt5.QtWidgets import QWidget, QApplication, QVBoxLayout
 from widgets.ChatBox import ChatBox
 from widgets.MessageBox import MessageBox
 from resources.Theme import UI
 
 # Define constant for placeholder text
-PLACEHOLDER_TEXT = " ( > w < ) "
+MESSAGE_PLACEHOLDER_TEXT = " ( > w < ) "
 
 # initialize socketio client
 sio = socketio.Client(
@@ -53,7 +53,7 @@ class mainWindow(QWidget):
         layout.addWidget(self.messageBox)
         self.setLayout(layout)
 
-        self.messageBox.updateText(PLACEHOLDER_TEXT)
+        self.messageBox.updateText(MESSAGE_PLACEHOLDER_TEXT)
 
     def initThreads(self):
         # Initialize threads
@@ -106,7 +106,6 @@ class mainWindow(QWidget):
         if eventName == "powerButtonPressed":
             if self.textToSpeechThread.is_playing_audio():
                 self.textToSpeechThread.stop_playback()
-                time.sleep(0.1)
 
             if not self.ResponseGenerationActive:
                 self.speechToTextThread.isListening = True
@@ -130,8 +129,18 @@ class mainWindow(QWidget):
 
         if eventName == "finalResult":
             self.messageBox.updateText(data.get("message"))
-            self.chatBox.addMessage(data.get("message"), "client")
-            self.emitToServer("message", data.get("message"))
+
+            # delay to allow message to be displayed on messageBox for a while
+            QTimer.singleShot(500, lambda: self.DelayedCallbackForHandleStt(data))
+
+    def DelayedCallbackForHandleStt(self, data):
+        # check for custom commands
+        if str(data.get("message")).lower().replace(" ", "") == "shutdown":
+            self.systemShutdown()
+            return
+
+        self.chatBox.addMessage(data.get("message"), "client")
+        self.emitToServer("message", data.get("message"))
 
     def handleTts(self, eventName, data):
         if eventName == "error":
@@ -171,7 +180,64 @@ class mainWindow(QWidget):
         if value:
             self.messageBox.updateText("Response is being generated ...")
         else:
-            self.messageBox.updateText(PLACEHOLDER_TEXT)
+            self.messageBox.updateText(MESSAGE_PLACEHOLDER_TEXT)
+
+    def systemShutdown(self):
+        try:
+            self.chatBox.addMessage(text="System shutdown initiated...", sender="info")
+            QApplication.processEvents()  # Ensure message is displayed
+            time.sleep(1)
+
+            # Use a thread to avoid blocking the GUI
+            threading.Thread(target=self._execute_shutdown, daemon=True).start()
+
+        except Exception as e:
+            print(f"Shutdown initiation failed: {str(e)}")
+            self.chatBox.addMessage(text=f"Shutdown failed", sender="info")
+
+    def _execute_shutdown(self):
+        try:
+            self.terminateApplication()
+            
+            shutdown_script = os.path.join(os.environ["HOME"], "qtApp", "shutdown.sh")
+            
+            subprocess.run(
+                [shutdown_script],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+
+        except Exception as e:
+            print(f"Unexpected shutdown error: {str(e)}")
+        finally:
+            os._exit(1)  # Force exit if we reach here
+
+    def terminateApplication(self):
+        """Clean up application resources"""
+        try:
+            # Stop threads in reverse order of dependency
+            self.textToSpeechThread.stop_playback()
+            self.speechToTextThread.quit()
+            self.gpioThread.quit()
+            self.socketThread.quit()
+
+            # Wait for threads (with timeouts)
+            self.speechToTextThread.wait(500)
+            self.gpioThread.wait(500)
+            self.socketThread.wait(500)
+
+            # Clean up hardware
+            if hasattr(GPIO, "cleanup"):
+                GPIO.cleanup()
+
+            # Disconnect network
+            if sio.connected:
+                sio.disconnect()
+
+        except Exception as e:
+            print(f"Termination error: {str(e)}")
+            raise  # Let _execute_shutdown handle final cleanup
 
 
 # QThread classes for handling sockets and GPIO in separate
@@ -363,7 +429,7 @@ class SpeechToTextThread(QThread):
 
                         # Ensure partial text on screen is cleared even if no final text
                         self.sttSignal.emit(
-                            "partialResult", {"message": PLACEHOLDER_TEXT}
+                            "partialResult", {"message": MESSAGE_PLACEHOLDER_TEXT}
                         )
 
                         if not self.resetRequested:

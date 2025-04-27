@@ -6,10 +6,10 @@ from flask_socketio import SocketIO
 socketio = SocketIO()
 messages = []
 
-LANGUAGE_MODEL = "llama3.1:8b"
-EMOTION = "asshole"
+LANGUAGE_MODEL = "llama3.2:latest"
+EMOTION = "happy"  # Options: neutral, happy, sad, angry, surprised, disgusted, fearful, etc...
 SYSTEM_PROMPT = f""" You are a expressive handheld AI assistant named ZELNA that always answers with a {EMOTION} tone. """
-TTS_VOICE_ID = 2
+TTS_VOICE_ID = 2 # Change this to the desired voice ID
 
 WAV_PATH = "temp/output.wav"
 MP3_PATH = "temp/output.mp3"
@@ -40,7 +40,7 @@ def clean_text(text):
 def chatWithHistory(input, systemPrompt="You are a helpful chat assistant."):
     """Handle chat input while maintaining message history."""
     global messages
-    maxHistory = 30
+    maxHistory = 20
 
     # Trim message history to maintain a manageable size
     if len(messages) > maxHistory * 2:
