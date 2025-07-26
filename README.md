@@ -1,14 +1,13 @@
 
 # ZELNA-handheld-assistant
+## TL;DR
+**ZELNA** is a smart handheld assistant that runs completely locally on your home server or personal computer.  
+It integrates with a Raspberry Pi-based handheld device and offers features such as:
+- Speech-to-text  
+- Text-to-speech  
+- A simple and minimal GUI  
 
-> ## TL;DR
-> **ZELNA** is a smart handheld assistant that runs completely locally on your home server or personal computer.  
-> It integrates with a Raspberry Pi-based handheld device and offers features such as:
-> - Speech-to-text  
-> - Text-to-speech  
-> - A simple and minimal GUI  
->
-> The client-side is built using Python and PyQt5, making it easily portable to other devices like smartphones, tablets, or desktops — so your local assistant can be accessible anywhere.
+The client-side is built using Python and PyQt5, making it easily portable to other devices like smartphones, tablets, or desktops — so your local assistant can be accessible anywhere.
 
 ---
 
